@@ -33,6 +33,13 @@
             "command": "${workspaceFolder}/build/bit-torrent-client",
             "group": "test",
             "dependsOn": "Build bit-torrent-client"
+        },
+        {
+            "label": "Run bt bencode parser tests",
+            "type": "shell",
+            "command": "${workspaceFolder}/build/bt-bencode-tests",
+            "group": "test",
+            "dependsOn": "Build bit-torrent-client"
         }
     ]
 }
