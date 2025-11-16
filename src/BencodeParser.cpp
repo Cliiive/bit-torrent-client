@@ -1,3 +1,4 @@
+#include <regex>
 #include <stdexcept>
 
 #include "BencodeParser.hpp"
@@ -9,7 +10,7 @@ constexpr char DICT_START = 'd';
 constexpr char END = 'e';
 constexpr char COLON = ':';
 
-Value parse(const std::string_view& data) {
+Value parse(const std::string& data) {
     if (data.empty()) {
         throw std::invalid_argument("Empty data");
     }
@@ -28,30 +29,27 @@ Value parse(const std::string_view& data) {
     }
 }
 
-Value parseInt(const std::string_view& data) {
+Value parseInt(const std::string& data) {
     // get the number between 'i' and 'e'
-    size_t endPos = data.find(END, 1);
-    if (endPos == std::string_view::npos) {
+    const size_t endPos = data.find(END, 1);
+    if (endPos == std::string::npos) {
         throw std::invalid_argument("Invalid integer bencode");
     }
-    std::string intStr = std::string(data.substr(1, endPos - 1));
+    const std::string intStr = std::string(data.substr(1, endPos - 1));
 
-    size_t pos = 0;
-    long long num = std::stoll(intStr, &pos);
-    if (pos != intStr.size()) {
+    if (!_isValidBencodeInt(intStr)) {
         throw std::invalid_argument("Invalid integer bencode");
     }
-
-    return num;
+    return std::stoll(intStr);
 }
 
-Value parseString(const std::string_view& data) {
+Value parseString(const std::string& data) {
     // get the length of the string
-    size_t colonPos = data.find(COLON);
-    if (colonPos == std::string_view::npos) {
+    const size_t colonPos = data.find(COLON);
+    if (colonPos == std::string::npos) {
         throw std::invalid_argument("Invalid string bencode");
     }
-    std::string lenStr = std::string(data.substr(0, colonPos));
+    const std::string lenStr = std::string(data.substr(0, colonPos));
     size_t strLen = std::stoul(lenStr);
 
     size_t startPos = colonPos + 1;
@@ -63,7 +61,7 @@ Value parseString(const std::string_view& data) {
 }
 
 template <typename Container, typename Inserter>
-Container parseIterableImpl(const std::string_view& data, char startChar, Inserter inserter) {
+Container parseIterableImpl(const std::string& data, char startChar, Inserter inserter) {
     if (data.empty() || data[0] != startChar) {
         throw std::invalid_argument("Invalid iterable bencode");
     }
@@ -78,9 +76,9 @@ Container parseIterableImpl(const std::string_view& data, char startChar, Insert
     return container;
 }
 
-Value parseDict(const std::string_view& data) {
+Value parseDict(const std::string& data) {
     return parseIterableImpl<Dict>(
-        data, DICT_START, [](Dict& dict, size_t& pos, const std::string_view& data) {
+        data, DICT_START, [](Dict& dict, size_t& pos, const std::string& data) {
             // parse key (must be a string)
             Value key = parseString(data.substr(pos));
             if (!std::holds_alternative<std::string>(key)) {
@@ -99,16 +97,16 @@ Value parseDict(const std::string_view& data) {
         });
 }
 
-Value parseList(const std::string_view& data) {
+Value parseList(const std::string& data) {
     return parseIterableImpl<List>(data, LIST_START,
-                                   [](List& list, size_t& pos, const std::string_view& data) {
+                                   [](List& list, size_t& pos, const std::string& data) {
                                        Value value = parse(data.substr(pos));
                                        list.values.push_back(value);
                                        _updatePosition(value, pos, data);
                                    });
 }
 
-void _updatePosition(const Value& value, size_t& pos, const std::string_view& data) {
+void _updatePosition(const Value& value, size_t& pos, const std::string& data) {
     std::visit(
         [&pos, &data](auto&& arg) {
             using T = std::decay_t<decltype(arg)>;
@@ -125,5 +123,10 @@ void _updatePosition(const Value& value, size_t& pos, const std::string_view& da
             }
         },
         value);
+}
+
+bool _isValidBencodeInt(const std::string& s) {
+    static const std::regex re("^(0|-[1-9][0-9]*|[1-9][0-9]*)$");
+    return std::regex_match(s, re);
 }
 } // namespace bt::bencode

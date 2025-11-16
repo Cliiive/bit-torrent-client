@@ -2,7 +2,6 @@
 
 #include <cstdint>
 #include <string>
-#include <string_view>
 #include <variant>
 #include <vector>
 
@@ -20,13 +19,14 @@ struct Dict {
     std::vector<std::pair<std::string, Value>> items;
 };
 
-Value parse(const std::string_view& data);
+Value parse(const std::string& data);
 
-Value parseInt(const std::string_view& data);
-Value parseString(const std::string_view& data);
-Value parseList(const std::string_view& data);
-Value parseDict(const std::string_view& data);
+Value parseInt(const std::string& data);
+Value parseString(const std::string& data);
+Value parseList(const std::string& data);
+Value parseDict(const std::string& data);
 
 // Helper function to update position after parsing a value
-void _updatePosition(const Value& value, size_t& pos, const std::string_view& data);
+void _updatePosition(const Value& value, size_t& pos, const std::string& data);
+bool _isValidBencodeInt(const std::string& s);
 } // namespace bt::bencode

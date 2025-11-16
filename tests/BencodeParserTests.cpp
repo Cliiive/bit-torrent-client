@@ -29,6 +29,22 @@ TEST_CASE("Parse integer 4") {
     REQUIRE(std::get<int64_t>(value) == 12093810981093);
 }
 
+TEST_CASE("Parse integer negative zero") {
+    REQUIRE_THROWS_AS(bencode::parse("i-0e"), std::invalid_argument);
+}
+
+TEST_CASE("Parse integer leading zero") {
+    REQUIRE_THROWS_AS(bencode::parse("i0123e"), std::invalid_argument);
+}
+
+TEST_CASE("Parse integer missing end") {
+    REQUIRE_THROWS_AS(bencode::parse("i123"), std::invalid_argument);
+}
+
+TEST_CASE("Parse integer empty") {
+    REQUIRE_THROWS_AS(bencode::parse("ie"), std::invalid_argument);
+}
+
 TEST_CASE("Parse integer overflow") {
     REQUIRE_THROWS_AS(bencode::parse("i9223372036854775808e"), std::out_of_range);
 }
