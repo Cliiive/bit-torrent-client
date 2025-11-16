@@ -10,7 +10,7 @@ constexpr char DICT_START = 'd';
 constexpr char END = 'e';
 constexpr char COLON = ':';
 
-Value parse(const std::string& data) {
+ParseResult parse(const std::string& data) {
     if (data.empty()) {
         throw std::invalid_argument("Empty data");
     }
@@ -29,7 +29,7 @@ Value parse(const std::string& data) {
     }
 }
 
-Value parseInt(const std::string& data) {
+ParseResult parseInt(const std::string& data) {
     // get the number between 'i' and 'e'
     const size_t endPos = data.find(END, 1);
     if (endPos == std::string::npos) {
@@ -40,10 +40,10 @@ Value parseInt(const std::string& data) {
     if (!_isValidBencodeInt(intStr)) {
         throw std::invalid_argument("Invalid integer bencode");
     }
-    return std::stoll(intStr);
+    return {std::stoll(intStr), endPos + 1};
 }
 
-Value parseString(const std::string& data) {
+ParseResult parseString(const std::string& data) {
     // get the length of the string
     const size_t colonPos = data.find(COLON);
     if (colonPos == std::string::npos) {
@@ -57,72 +57,56 @@ Value parseString(const std::string& data) {
         throw std::invalid_argument("String length exceeds data size");
     }
 
-    return std::string(data.substr(startPos, strLen));
+    return {std::string(data.substr(startPos, strLen)), startPos + strLen};
 }
 
-template <typename Container, typename Inserter>
-Container parseIterableImpl(const std::string& data, char startChar, Inserter inserter) {
-    if (data.empty() || data[0] != startChar) {
-        throw std::invalid_argument("Invalid iterable bencode");
+ParseResult parseDict(const std::string& data, size_t startPos) {
+    if (data[startPos] != 'd') {
+        throw std::invalid_argument("Expected dict");
     }
 
-    size_t pos = 1; // skip start char
-    Container container;
+    size_t pos = startPos + 1;
+    Dict dict;
 
     while (pos < data.size() && data[pos] != END) {
-        inserter(container, pos, data);
+        ParseResult keyRes = parseString(data.substr(pos));
+        if (!std::holds_alternative<std::string>(keyRes.value)) {
+            throw std::invalid_argument("Dictionary keys must be strings");
+        }
+        std::string key = std::get<std::string>(keyRes.value);
+        pos += keyRes.consumed;
+
+        ParseResult valRes = parse(data.substr(pos));
+        dict.items.emplace_back(key, valRes.value);
+        pos += valRes.consumed;
     }
 
-    return container;
+    if (pos >= data.size() || data[pos] != END) {
+        throw std::invalid_argument("Unterminated dict");
+    }
+
+    return {dict, pos - startPos + 1};
 }
 
-Value parseDict(const std::string& data) {
-    return parseIterableImpl<Dict>(
-        data, DICT_START, [](Dict& dict, size_t& pos, const std::string& data) {
-            // parse key (must be a string)
-            Value key = parseString(data.substr(pos));
-            if (!std::holds_alternative<std::string>(key)) {
-                throw std::invalid_argument("Dictionary keys must be strings");
-            }
-            std::string keyStr = std::get<std::string>(key);
+ParseResult parseList(const std::string& data, size_t startPos) {
+    if (data[startPos] != LIST_START) {
+        throw std::invalid_argument("Expected list");
+    }
 
-            // move past key in the input
-            pos += std::to_string(keyStr.size()).size() + 1 + keyStr.size();
+    size_t pos = startPos + 1;
+    List list;
 
-            // parse value
-            Value value = parse(data.substr(pos));
-            dict.items.emplace_back(keyStr, value);
+    while (pos < data.size() && data[pos] != END) {
+        ParseResult res = parse(data.substr(pos));
+        list.values.push_back(res.value);
+        pos += res.consumed; // advance exactly the number of chars parsed
+    }
 
-            _updatePosition(value, pos, data);
-        });
-}
+    if (pos >= data.size() || data[pos] != END) {
+        throw std::invalid_argument("Unterminated list");
+    }
 
-Value parseList(const std::string& data) {
-    return parseIterableImpl<List>(data, LIST_START,
-                                   [](List& list, size_t& pos, const std::string& data) {
-                                       Value value = parse(data.substr(pos));
-                                       list.values.push_back(value);
-                                       _updatePosition(value, pos, data);
-                                   });
-}
-
-void _updatePosition(const Value& value, size_t& pos, const std::string& data) {
-    std::visit(
-        [&pos, &data](auto&& arg) {
-            using T = std::decay_t<decltype(arg)>;
-            if constexpr (std::is_same_v<T, int64_t>) {
-                pos += std::to_string(arg).size() + 2; // 'i' and 'e'
-            } else if constexpr (std::is_same_v<T, std::string>) {
-                pos += std::to_string(arg.size()).size() + 1 + arg.size();
-            } else if constexpr (std::is_same_v<T, List>) {
-                size_t listEnd = data.find(END, pos);
-                pos = listEnd + 1;
-            } else if constexpr (std::is_same_v<T, Dict>) {
-                size_t dictEnd = data.find(END, pos);
-                pos = dictEnd + 1;
-            }
-        },
-        value);
+    return {list, pos - startPos + 1}; // +1 for the ending 'e'
 }
 
 bool _isValidBencodeInt(const std::string& s) {
