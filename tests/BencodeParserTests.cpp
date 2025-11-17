@@ -336,3 +336,5 @@ TEST_CASE("Parse dict missing terminator") {
 TEST_CASE("Parse dict with non-string key") {
     REQUIRE_THROWS_AS(bencode::parse("di1e3:bare"), std::invalid_argument);
 }
+
+///// TODO: Torrent file tests would go here /////

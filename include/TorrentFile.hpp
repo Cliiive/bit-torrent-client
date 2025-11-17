@@ -4,8 +4,6 @@
 #include <string>
 #include <vector>
 
-#include "BencodeParser.hpp"
-
 namespace bt {
 /**
  * @brief Metadata representation of a parsed .torrent file.
@@ -58,5 +56,4 @@ struct TorrentFile {
     uint64_t fileLength;
     std::string fileName;
 };
-
 } // namespace bt
