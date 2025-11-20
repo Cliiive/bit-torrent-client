@@ -1,11 +1,11 @@
 #pragma once
 #include "BencodeParser.hpp"
+
 #include <array>
 #include <cstdint>
 #include <string>
+#include <sys/types.h>
 #include <vector>
-#include <algorithm>
-#include <stdexcept>
 
 namespace bt::core {
 /**
@@ -52,22 +52,43 @@ namespace bt::core {
  *   matches the expected piece count before attempting downloads.
  */
 constexpr int HASH_LENGTH = 20;
+using Sha1Hash = std::array<uint8_t, HASH_LENGTH>;
+
+struct DictKeys {
+    static constexpr const char* COMMENT = "comment";
+    static constexpr const char* ANNOUNCE = "announce";
+    static constexpr const char* INFO = "info";
+    static constexpr const char* PIECE_LENGTH = "piece length";
+    static constexpr const char* LENGTH = "length";
+    static constexpr const char* NAME = "name";
+    static constexpr const char* PIECES = "pieces";
+    static constexpr const char* CREATION_DATE = "creation date";
+};
 
 struct TorrentMetadata {
     std::string announce;
-    std::array<uint8_t, HASH_LENGTH> infoHash;
-    std::vector<std::array<uint8_t, HASH_LENGTH>> pieceHashes;
-    uint64_t pieceLength;
-    uint64_t fileLength;
-    std::string fileName;
+    std::string comment;
+    uint64_t creationDate;
+    Sha1Hash infoHash;
+
+    struct Info {
+        std::vector<Sha1Hash> pieceHashes;
+        uint64_t pieceLength;
+        uint64_t fileLength;
+        std::string fileName;
+    };
+
+    Info info;
 };
 
-
-const TorrentMetadata constructTorrentFile( std::string_view& path );
+TorrentMetadata parseTorrentData(std::string_view torrentData);
 
 namespace detail {
-std::string loadTorrentFile( std::string_view& path);
-TorrentMetadata parseTorrentData( const std::string& torrentData );
-const std::array<uint8_t, HASH_LENGTH> calculateInfoHash( const std::vector<uint8_t>& torrentBuffer );
-}
+std::string loadTorrentFile(std::string_view& path);
+bencode::Dict parseRootDict(const std::string& torrentData);
+TorrentMetadata::Info parseInfoDict(const bencode::Dict& infoDict);
+TorrentMetadata parseRootMetadata(const bencode::Dict& rootDict);
+Sha1Hash calculateInfoHash(const std::vector<uint8_t>& torrentBuffer);
+std::vector<Sha1Hash> parsePieceHashes(const std::string& piecesStr);
+} // namespace detail
 } // namespace bt::core

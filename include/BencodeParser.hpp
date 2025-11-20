@@ -1,12 +1,12 @@
 #pragma once
 
+#include <algorithm>
 #include <cstdint>
+#include <stdexcept>
 #include <string>
 #include <string_view>
 #include <variant>
 #include <vector>
-#include <algorithm>
-#include <stdexcept>
 
 /**
  * @file BencodeParser.hpp
@@ -91,18 +91,17 @@ struct Dict {
 /// Parse a full bencode payload
 Value parse(std::string_view data);
 
-template<typename Variant, typename T>
-struct is_in_variant;
+template <typename Variant, typename T> struct is_in_variant;
 
-template<typename... Ts, typename T>
-struct is_in_variant<std::variant<Ts...>, T>
-    : std::bool_constant<(std::is_same_v<T, Ts> || ...)> {};
+template <typename... Ts, typename T>
+struct is_in_variant<std::variant<Ts...>, T> : std::bool_constant<(std::is_same_v<T, Ts> || ...)> {
+};
 
-template<typename Variant, typename T>
+template <typename Variant, typename T>
 concept InVariant = is_in_variant<Variant, T>::value;
 
-template<typename T>
-requires InVariant<Value, T>
+template <typename T>
+    requires InVariant<Value, T>
 T extractValueFromDict(const Dict& dict, const std::string& key) {
     auto it = std::find_if(dict.values.begin(), dict.values.end(),
                            [&key](const auto& pair) { return pair.first == key; });
@@ -115,8 +114,11 @@ T extractValueFromDict(const Dict& dict, const std::string& key) {
 }
 
 namespace detail {
-template <typename Container, typename CreateItem>
-Value parseContainer(std::string_view data, size_t& pos, CreateItem createItem);
+constexpr char INT_START = 'i';
+constexpr char LIST_START = 'l';
+constexpr char DICT_START = 'd';
+constexpr char END = 'e';
+constexpr char COLON = ':';
 
 Value parse(std::string_view data, size_t& pos);
 Value parseInt(std::string_view data, size_t& pos);
@@ -125,6 +127,20 @@ Value parseList(std::string_view data, size_t& pos);
 Value parseDict(std::string_view data, size_t& pos);
 bool _isValidBencodeInt(std::string_view s);
 void _expectChar(std::string_view data, size_t& pos, char expected);
+
+template <typename Container, typename CreateItem>
+Value parseContainer(std::string_view data, size_t& pos, CreateItem createItem) {
+    Container container;
+    _expectChar(data, pos, Container::id);
+
+    while (pos < data.size() && data[pos] != END) {
+        auto item = createItem(data, pos);
+        container.values.push_back(item);
+    }
+
+    _expectChar(data, pos, END);
+    return container;
+}
 } // namespace detail
 
-} // namespace bt::bencode
+} // namespace bt::core::bencode

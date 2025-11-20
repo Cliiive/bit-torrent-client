@@ -9,11 +9,7 @@ Value parse(std::string_view data) {
 }
 
 namespace detail {
-constexpr char INT_START = 'i';
-constexpr char LIST_START = 'l';
-constexpr char DICT_START = 'd';
-constexpr char END = 'e';
-constexpr char COLON = ':';
+
 
 Value parse(std::string_view data, size_t& pos) {
     if (data.empty()) {
@@ -71,20 +67,6 @@ Value parseString(std::string_view data, size_t& pos) {
     pos += len;
 
     return value;
-}
-
-template <typename Container, typename CreateItem>
-Value parseContainer(std::string_view data, size_t& pos, CreateItem createItem) {
-    Container container;
-    _expectChar(data, pos, Container::id);
-
-    while (pos < data.size() && data[pos] != END) {
-        auto item = createItem(data, pos);
-        container.values.push_back(item);
-    }
-
-    _expectChar(data, pos, END);
-    return container;
 }
 
 // Implementation for list
