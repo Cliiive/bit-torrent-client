@@ -44,7 +44,7 @@
             "command": "${workspaceFolder}/build/bt-bencode-tests",
             "group": "test",
             "dependsOn": [
-                "Build bit-torrent-client"
+                "Build: bit-torrent-client"
             ]
         },
         {
@@ -53,7 +53,7 @@
             "command": "${workspaceFolder}/build/bt-metadata-loader-tests",
             "group": "test",
             "dependsOn": [
-                "Build bit-torrent-client"
+                "Build: bit-torrent-client"
             ]
         },
         {
@@ -62,7 +62,7 @@
             "command": "${workspaceFolder}/build/bt-metadata-loader-tests && ${workspaceFolder}/build/bt-bencode-tests",
             "group": "test",
             "dependsOn": [
-                "Build bit-torrent-client"
+                "Build: bit-torrent-client"
             ]
         }
     ]
