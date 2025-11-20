@@ -69,7 +69,7 @@
  * _expectChar(data, pos, expected)
  *   Advance pos if the next character matches expected; otherwise throws.
  */
-namespace bt::bencode {
+namespace bt::core::bencode {
 struct List;
 struct Dict;
 

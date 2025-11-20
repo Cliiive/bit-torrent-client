@@ -21,16 +21,16 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR}/lib/doctest)
 # Main executable
 add_executable(bit-torrent-client
     src/main.cpp
-    src/core/TorrentFile.cpp
+    src/core/TorrentMetadataLoader.cpp
     src/core/Handshake.cpp
     src/core/Peer.cpp
-    src/utils/BencodeParser.cpp
+    src/core/BencodeParser.cpp
 )
 
 # Bencode parser tests
 add_executable(bt-bencode-tests
     tests/BencodeParserTests.cpp
-    src/utils/BencodeParser.cpp
+    src/core/BencodeParser.cpp
 )
 
 target_link_libraries(bit-torrent-client PRIVATE spdlog::spdlog)

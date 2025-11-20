@@ -2,7 +2,7 @@
 #include <array>
 #include <cstdint>
 #include <string>
-namespace bt {
+namespace bt::core {
 
 /**
  * @brief BitTorrent handshake message structure.

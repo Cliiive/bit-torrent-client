@@ -4,7 +4,7 @@
 #include <string>
 #include <vector>
 
-namespace bt {
+namespace bt::core {
 /**
  * @brief Metadata representation of a parsed .torrent file.
  *
@@ -63,7 +63,7 @@ struct TorrentFile {
 const TorrentFile constructTorrentFile( std::string_view& path );
 
 namespace detail {
-const std::vector<uint8_t> loadTorrentFile( std::string_view& path);
+std::string loadTorrentFile( std::string_view& path);
 const std::array<uint8_t, HASH_LENGTH> calculateInfoHash( const std::vector<uint8_t>& torrentBuffer );
 }
 } // namespace btd

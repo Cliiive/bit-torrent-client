@@ -5,7 +5,7 @@
 
 #include "BencodeParser.hpp"
 
-using namespace bt;
+using namespace bt::core;
 
 //////////////////
 // Integer tests

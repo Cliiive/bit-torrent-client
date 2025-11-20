@@ -1,7 +1,7 @@
 #pragma once
 #include <array>
 #include <cstdint>
-namespace bt {
+namespace bt::core {
 
 typedef std::array<uint8_t, 4> IPAddress;
 

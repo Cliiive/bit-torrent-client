@@ -2,7 +2,7 @@
 
 #include "BencodeParser.hpp"
 
-namespace bt::bencode {
+namespace bt::core::bencode {
 Value parse(std::string_view data) {
     size_t pos = 0;
     return detail::parse(data, pos);
