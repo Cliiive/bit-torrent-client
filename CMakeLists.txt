@@ -15,6 +15,8 @@ FetchContent_Declare(
 
 FetchContent_MakeAvailable(spdlog)
 
+find_package(Boost REQUIRED)
+
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/lib/doctest)
 
@@ -33,4 +35,4 @@ add_executable(bt-bencode-tests
     src/core/BencodeParser.cpp
 )
 
-target_link_libraries(bit-torrent-client PRIVATE spdlog::spdlog)
+target_link_libraries(bit-torrent-client PRIVATE spdlog::spdlog Boost::boost)

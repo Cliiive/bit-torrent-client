@@ -1,8 +1,10 @@
+#include "TorrentMetadataLoader.hpp"
+#include "BencodeParser.hpp"
+
+#include <boost/uuid/detail/sha1.hpp>
+#include <chrono>
 #include <spdlog/spdlog.h>
 #include <string>
-
-#include "BencodeParser.hpp"
-#include "TorrentMetadataLoader.hpp"
 
 namespace bt::core {
 TorrentMetadata parseTorrentData(std::string_view path) {
@@ -11,9 +13,17 @@ TorrentMetadata parseTorrentData(std::string_view path) {
 
     spdlog::debug("Parsing torrent data of size: {} bytes", torrentData.size());
 
+    // Start spdlog timer
+    auto startTime = std::chrono::high_resolution_clock::now();
+
     const auto rootDict = parseRootDict(torrentData);
     const auto metadata = parseRootMetadata(rootDict);
 
+    // End spdlog timer
+    auto endTime = std::chrono::high_resolution_clock::now();
+    auto duration =
+        std::chrono::duration_cast<std::chrono::microseconds>(endTime - startTime).count();
+    spdlog::debug("Parsed and loaded torrent metadata in {} us", duration);
     debugLogTorrentMetadata(metadata);
     return metadata;
 }
@@ -67,7 +77,10 @@ TorrentMetadata parseRootMetadata(const bencode::Dict& rootDict) {
         bencode::extractValueFromDict<int64_t>(rootDict, DictKeys::CREATION_DATE);
 
     const auto& infoDict = bencode::extractValueFromDict<bencode::Dict>(rootDict, DictKeys::INFO);
-    metadata.info = parseInfoDict(infoDict);
+    const auto& infoDictData = parseInfoDict(infoDict);
+    metadata.info = infoDictData;
+
+    metadata.infoHash = calculateInfoHash(infoDictData);
 
     return metadata;
 }
@@ -93,9 +106,32 @@ std::vector<Sha1Hash> parsePieceHashes(const std::string& piecesStr) {
 }
 
 Sha1Hash calculateInfoHash(const TorrentMetadata::Info& infoDictData) {
-    // Placeholder implementation - actual SHA-1 calculation would go here
-    Sha1Hash dummyHash = {};
-    return dummyHash;
+    bencode::Dict infoDict;
+    infoDict.values[DictKeys::PIECE_LENGTH] = static_cast<int64_t>(infoDictData.pieceLength);
+    infoDict.values[DictKeys::LENGTH] = static_cast<int64_t>(infoDictData.fileLength);
+    infoDict.values[DictKeys::NAME] = infoDictData.fileName;
+    std::string piecesStr;
+    for (const auto& hash : infoDictData.pieceHashes) {
+        piecesStr.append(reinterpret_cast<const char*>(hash.data()), HASH_LENGTH);
+    }
+    infoDict.values[DictKeys::PIECES] = piecesStr;
+
+    const auto& encodedInfo = bencode::encode(infoDict);
+
+    boost::uuids::detail::sha1 sha1;
+    unsigned int hash[5];
+    sha1.process_bytes(encodedInfo.data(), encodedInfo.size());
+    sha1.get_digest(hash);
+
+    Sha1Hash infoHash;
+    for (size_t i = 0; i < 5; ++i) {
+        infoHash[i * 4 + 0] = (hash[i] >> 24) & 0xFF;
+        infoHash[i * 4 + 1] = (hash[i] >> 16) & 0xFF;
+        infoHash[i * 4 + 2] = (hash[i] >> 8) & 0xFF;
+        infoHash[i * 4 + 3] = (hash[i] >> 0) & 0xFF;
+    }
+
+    return infoHash;
 }
 
 std::string loadTorrentFile(std::string_view& path) {
@@ -132,6 +168,16 @@ void debugLogTorrentMetadata(const TorrentMetadata& metadata) {
     spdlog::debug("  Announce URL: {}", metadata.announce);
     spdlog::debug("  Comment: {}", metadata.comment);
     spdlog::debug("  Creation Date: {}", metadata.creationDate);
+    {
+        std::string hex;
+        hex.reserve(metadata.infoHash.size() * 2);
+        static const char* hexDigits = "0123456789abcdef";
+        for (auto byte : metadata.infoHash) {
+            hex.push_back(hexDigits[(byte >> 4) & 0x0F]);
+            hex.push_back(hexDigits[byte & 0x0F]);
+        }
+        spdlog::debug("  Info Hash: {}", hex);
+    }
     spdlog::debug("  Info:");
     spdlog::debug("    File Name: {}", metadata.info.fileName);
     spdlog::debug("    File Length: {}", metadata.info.fileLength);

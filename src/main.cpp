@@ -1,4 +1,5 @@
 #include "TorrentMetadataLoader.hpp"
+#include "spdlog/common.h"
 #include "spdlog/spdlog.h"
 
 #include <string_view>
@@ -14,7 +15,7 @@ int main() {
 
     try {
         auto torrentFile = core::parseTorrentData(path);
-        spdlog::info("Torrent file constructed successfully.");
+        spdlog::info("Torrent metadata loaded successfully.");
     } catch (const std::exception& e) {
         spdlog::critical("Error constructing torrent file: {}", e.what());
     }
