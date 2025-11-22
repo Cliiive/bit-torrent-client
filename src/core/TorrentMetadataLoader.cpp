@@ -5,6 +5,7 @@
 #include <chrono>
 #include <fstream>
 #include <spdlog/spdlog.h>
+#include <spdlog/fmt/bin_to_hex.h>
 #include <string>
 
 namespace bt::core {
@@ -17,7 +18,7 @@ TorrentMetadata parseTorrentData(std::string_view path) {
     // Start spdlog timer
     auto startTime = std::chrono::high_resolution_clock::now();
 
-    std::string torrentString(torrentData.begin(), torrentData.end());
+    const auto& torrentString = torrentData;
     const auto rootDict = parseRootDict(torrentString);
     const auto metadata = parseRootMetadata(rootDict);
 
@@ -63,8 +64,9 @@ TorrentMetadata::Info parseInfoDict(const bencode::Dict& infoDict) {
         throw std::runtime_error("Invalid file length in torrent metadata");
 
     const auto fileName = bencode::extractValueFromDict<std::string>(infoDict, DictKeys::NAME);
-
+    
     return TorrentMetadata::Info{.pieceHashes = pieceHashes,
+                                 .rawPieces = piecesStr,
                                  .pieceLength = static_cast<uint64_t>(pieceLength),
                                  .fileLength = static_cast<uint64_t>(fileLength),
                                  .fileName = fileName};
@@ -88,22 +90,25 @@ TorrentMetadata parseRootMetadata(const bencode::Dict& rootDict) {
 }
 
 std::vector<Sha1Hash> parsePieceHashes(const std::string& piecesStr) {
+    // SAFETY GUARD:
+    // Ensure Sha1Hash is just raw bytes in memory (likely std::array<uint8_t, 20>)
+    static_assert(std::is_trivially_copyable_v<Sha1Hash>, "Sha1Hash must be trivially copyable for memcpy");
+    static_assert(sizeof(Sha1Hash) == HASH_LENGTH, "Sha1Hash size mismatch");
+    
     if (piecesStr.size() % HASH_LENGTH != 0) {
         throw std::runtime_error("Invalid pieces string length in torrent metadata");
     }
 
     size_t numHashes = piecesStr.size() / HASH_LENGTH;
     std::vector<Sha1Hash> pieceHashes;
-    pieceHashes.reserve(numHashes);
+    pieceHashes.resize(numHashes);
 
-    for (size_t i = 0; i < numHashes; ++i) {
-        Sha1Hash hash;
-        std::copy_n(reinterpret_cast<const uint8_t*>(piecesStr.data()) + i * HASH_LENGTH,
-                    HASH_LENGTH, hash.begin());
-        pieceHashes.push_back(hash);
-    }
+    // Get raw pointers
+    const uint8_t* src = reinterpret_cast<const uint8_t*>(piecesStr.data());
+    uint8_t* dst = reinterpret_cast<uint8_t*>(pieceHashes.data());
 
-    spdlog::debug("Parsed {} piece hashes from torrent metadata", pieceHashes.size());
+    std::memcpy(dst, src, piecesStr.size());
+
     return pieceHashes;
 }
 
@@ -112,31 +117,22 @@ Sha1Hash calculateInfoHash(const TorrentMetadata::Info& infoDictData) {
     infoDict.values[DictKeys::PIECE_LENGTH] = static_cast<int64_t>(infoDictData.pieceLength);
     infoDict.values[DictKeys::LENGTH] = static_cast<int64_t>(infoDictData.fileLength);
     infoDict.values[DictKeys::NAME] = infoDictData.fileName;
-    std::string piecesStr;
-    for (const auto& hash : infoDictData.pieceHashes) {
-        piecesStr.append(reinterpret_cast<const char*>(hash.data()), HASH_LENGTH);
-    }
-    infoDict.values[DictKeys::PIECES] = piecesStr;
+    infoDict.values[DictKeys::PIECES] = infoDictData.rawPieces;
 
     const auto& encodedInfo = bencode::encode(infoDict);
 
     boost::uuids::detail::sha1 sha1;
-    unsigned int hash[5];
+    boost::uuids::detail::sha1::digest_type hash;
     sha1.process_bytes(encodedInfo.data(), encodedInfo.size());
     sha1.get_digest(hash);
 
     Sha1Hash infoHash;
-    for (size_t i = 0; i < 5; ++i) {
-        infoHash[i * 4 + 0] = (hash[i] >> 24) & 0xFF;
-        infoHash[i * 4 + 1] = (hash[i] >> 16) & 0xFF;
-        infoHash[i * 4 + 2] = (hash[i] >> 8) & 0xFF;
-        infoHash[i * 4 + 3] = (hash[i] >> 0) & 0xFF;
-    }
+    std::copy_n(reinterpret_cast<const uint8_t*>(hash), infoHash.size(), infoHash.begin());
 
     return infoHash;
 }
 
-std::vector<uint8_t> loadTorrentFile(const std::filesystem::path& path) {
+std::string loadTorrentFile(const std::filesystem::path& path) {
     spdlog::info("Loading torrent file from path: {}", path.string());
 
     if (!std::filesystem::exists(path)) {
@@ -154,14 +150,13 @@ std::vector<uint8_t> loadTorrentFile(const std::filesystem::path& path) {
     }
 
     file.seekg(0, std::ios::beg);
-    std::vector<uint8_t> fileData(static_cast<size_t>(fileSize));
-    if (!file.read(reinterpret_cast<char*>(fileData.data()),
-                   static_cast<std::streamsize>(fileSize))) {
-        throw std::runtime_error("Failed to read entire torrent file: " + path.string());
+    std::string fileData;
+    fileData.resize(static_cast<size_t>(fileSize)); // Allocate once
+    
+    // Read directly into string buffer
+    if (!file.read(fileData.data(), static_cast<std::streamsize>(fileSize))) {
+         throw std::runtime_error("Failed to read...");
     }
-
-    spdlog::debug("Successfully loaded torrent file: {} ({} bytes)", path.string(),
-                  static_cast<std::size_t>(fileSize));
     return fileData;
 }
 
@@ -170,16 +165,7 @@ void debugLogTorrentMetadata(const TorrentMetadata& metadata) {
     spdlog::debug("  Announce URL: {}", metadata.announce);
     spdlog::debug("  Comment: {}", metadata.comment);
     spdlog::debug("  Creation Date: {}", metadata.creationDate);
-    {
-        std::string hex;
-        hex.reserve(metadata.infoHash.size() * 2);
-        static const char* hexDigits = "0123456789abcdef";
-        for (auto byte : metadata.infoHash) {
-            hex.push_back(hexDigits[(byte >> 4) & 0x0F]);
-            hex.push_back(hexDigits[byte & 0x0F]);
-        }
-        spdlog::debug("  Info Hash: {}", hex);
-    }
+    spdlog::debug("  Info Hash: {:spn}", spdlog::to_hex(metadata.infoHash));
     spdlog::debug("  Info:");
     spdlog::debug("    File Name: {}", metadata.info.fileName);
     spdlog::debug("    File Length: {}", metadata.info.fileLength);

@@ -7,6 +7,8 @@
 #include <string>
 #include <sys/types.h>
 #include <vector>
+#include <boost/uuid/detail/sha1.hpp>
+
 
 /**
  * @file TorrentMetadataLoader.hpp
@@ -16,8 +18,10 @@
  * metadata, and compute SHA-1 info-hash.
  */
 
-namespace bt::core {
 
+using namespace boost::uuids::detail;
+
+namespace bt::core {
 constexpr int HASH_LENGTH = 20;
 using Sha1Hash = std::array<uint8_t, HASH_LENGTH>;
 
@@ -42,6 +46,8 @@ struct TorrentMetadata {
 
     struct Info {
         std::vector<Sha1Hash> pieceHashes;
+        std::string rawPieces;
+
         uint64_t pieceLength;
         uint64_t fileLength;
         std::string fileName;
@@ -54,7 +60,7 @@ struct TorrentMetadata {
 TorrentMetadata parseTorrentData(std::string_view torrentData);
 
 namespace detail {
-std::vector<uint8_t> loadTorrentFile(const std::filesystem::path& path);
+std::string loadTorrentFile(const std::filesystem::path& path);
 bencode::Dict parseRootDict(const std::string& torrentData);
 TorrentMetadata::Info parseInfoDict(const bencode::Dict& infoDict);
 TorrentMetadata parseRootMetadata(const bencode::Dict& rootDict);
