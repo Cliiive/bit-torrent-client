@@ -1,55 +1,52 @@
-#include "core/torrent_metadata_loader.hpp"
-#include "core/tracker_communicator.hpp"
+#include "app/torrent_orchestrator.hpp"
+
 #include "spdlog/common.h"
 #include "spdlog/spdlog.h"
-
 #include <argparse/argparse.hpp>
 #include <string_view>
 
-using namespace bt;
-int main(int argc, char* argv[]) {
-    // Parse command line arguments (if any)
+struct Settings {
+    std::string torrent_path;
+    bool verbose;
+};
+
+static Settings parse_args(int argc, char* argv[]) {
     argparse::ArgumentParser app("bit-torrent-client");
+
     app.add_argument("-t", "--torrent").required().help("Path to the torrent file");
     app.add_argument("-v", "--verbose")
-        .help("Verbose logs (for debugging)")
+        .help("Verbose logs")
         .default_value(false)
         .implicit_value(true);
 
-    try {
-        app.parse_args(argc, argv);
-    } catch (const std::exception& err) {
-        std::cerr << err.what() << std::endl;
-        std::cerr << app;
-        return 1;
-    }
+    app.parse_args(argc, argv);
 
-    if (app["--verbose"] == true) {
+    return {app.get<std::string>("--torrent"), app.get<bool>("--verbose")};
+}
+
+static void init_logging(bool verbose) {
+    if (verbose) {
         spdlog::set_level(spdlog::level::debug);
     } else {
         spdlog::set_level(spdlog::level::info);
     }
 
-    const auto path = app.get<std::string>("--torrent");
-
-    // Logger setup
     spdlog::set_pattern("[%H:%M:%S %z] [%n] [%^%l%$] [thread %t] %v");
+}
 
-    /// Setup and start app orchestrators
-    spdlog::info("Main loop starts now");
-    core::TorrentMetadata torrent;
+using namespace bt;
+int main(int argc, char* argv[]) {
+    const auto settings = parse_args(argc, argv);
+    init_logging(settings.verbose);
+
     try {
-        torrent = core::parseTorrentData(path);
-        spdlog::info("Torrent metadata loaded successfully.");
+        spdlog::debug("Starting torrent orchestrator");
+        TorrentOrchestrator torrentOrchestrator(settings.torrent_path);
+        torrentOrchestrator.start();
     } catch (const std::exception& e) {
-        spdlog::critical("Error constructing torrent file: {}", e.what());
+        spdlog::critical("Fatal error: {}. Suggestion: re-run with -v for more details.", e.what());
+        return 1;
     }
 
-    const auto trackerResponse = core::announceAndGetPeers(torrent);
-
-    spdlog::info("Tracker response: interval: {}, number of peers: {}", trackerResponse.interval,
-                 trackerResponse.peersBlob.size());
-
-    spdlog::info("Exiting.");
     return 0;
 }
