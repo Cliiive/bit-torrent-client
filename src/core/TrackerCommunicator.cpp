@@ -2,13 +2,10 @@
 #include <random>
 #include <stdexcept>
 
-#include "Connection.hpp"
+#include "TrackerCommunicator.hpp"
 #include "cpr/response.h"
 
 namespace bt::core {
-std::string urlEncode(const std::string_view str) {
-    return std::string{};
-}
 boost::urls::url buildTrackerUrl(const TorrentMetadata& metadata, std::string_view peerId) {
     using namespace boost;
 
@@ -40,7 +37,7 @@ std::string generateId(int length) {
     return random_string;
 }
 
-cpr::Response announce(std::string_view url) {
+cpr::Response announceToTracker(std::string_view url) {
     const auto r = cpr::Get(cpr::Url{url});
     if (r.status_code != 200) {
         throw std::runtime_error{"Announcing failed"};

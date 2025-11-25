@@ -1,6 +1,6 @@
 #include "BencodeParser.hpp"
-#include "Connection.hpp"
 #include "TorrentMetadataLoader.hpp"
+#include "TrackerCommunicator.hpp"
 #include "spdlog/common.h"
 #include "spdlog/spdlog.h"
 
@@ -38,7 +38,7 @@ int main(int argc, char* argv[]) {
 
     spdlog::debug("Announcing to the tracker url...");
 
-    const auto r = core::announce(url.data());
+    const auto r = core::announceToTracker(url.data());
     spdlog::debug("Repsonse from tracker: {}", r.text);
 
     auto parsedText = core::bencode::parse(r.text);

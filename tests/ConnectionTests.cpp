@@ -1,8 +1,8 @@
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include <doctest.h>
 
-#include "Connection.hpp"
 #include "TorrentMetadataLoader.hpp"
+#include "TrackerCommunicator.hpp"
 
 #include <filesystem>
 #include <string>
@@ -53,5 +53,6 @@ TEST_CASE("buildTrackerUrl includes required parameters") {
 
 TEST_CASE("announce throws on non-200 response") {
     // Using a known 404 endpoint to force failure
-    CHECK_THROWS_AS(bt::core::announce("https://httpbin.org/status/404"), std::runtime_error);
+    CHECK_THROWS_AS(bt::core::announceToTracker("https://httpbin.org/status/404"),
+                    std::runtime_error);
 }

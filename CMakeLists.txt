@@ -28,10 +28,8 @@ find_package(Boost REQUIRED COMPONENTS url)
 # Create a static library named 'bt_core'.
 add_library(bt_core STATIC
     src/core/TorrentMetadataLoader.cpp
-    src/core/Handshake.cpp
-    src/core/Peer.cpp
     src/core/BencodeParser.cpp
-    src/core/Connection.cpp
+    src/core/TrackerCommunicator.cpp
 )
 
 # Define include directories for the library.
