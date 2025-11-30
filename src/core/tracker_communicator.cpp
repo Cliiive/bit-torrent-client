@@ -66,6 +66,9 @@ cpr::Response announceToTracker(std::string_view url) {
         throw std::runtime_error(msg);
     }
 
+    spdlog::debug("Announce response status code: {}", r.status_code);
+    spdlog::debug("Announce response: {}", r.text);
+
     return r;
 }
 

@@ -136,7 +136,9 @@ Sha1Hash calculateInfoHash(const TorrentMetadata::Info& infoDictData) {
     sha1.get_digest(hash);
 
     Sha1Hash infoHash;
-    std::copy_n(reinterpret_cast<const uint8_t*>(hash), infoHash.size(), infoHash.begin());
+    for (size_t i = 0; i < HASH_LENGTH; ++i) {
+        infoHash[i] = static_cast<uint8_t>((hash[i / 4] >> (8 * (3 - (i % 4)))) & 0xFF);
+    }
 
     return infoHash;
 }

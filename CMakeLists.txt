@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.16)
+cmake_minimum_required(VERSION 3.24)
 project(bit_torrent_client LANGUAGES CXX)
 
 # Suppress Boost policy warning if supported
@@ -39,6 +39,7 @@ FetchContent_MakeAvailable(argparse)
 
 # Remove duplicate Boost calls; use single config-mode call with components.
 find_package(Boost REQUIRED CONFIG COMPONENTS url)
+add_definitions(-DBOOST_URL_NO_LIB)
 
 # Create a static library named 'bt_core'.
 add_library(bt_core STATIC

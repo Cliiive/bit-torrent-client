@@ -32,7 +32,7 @@
         {
             "label": "Build and Run: bit-torrent-client",
             "type": "shell",
-            "command": "${workspaceFolder}/build/bit-torrent-client --torrent ./build/debian-13.2.0-arm64-netinst.iso.torrent -v",
+            "command": "${workspaceFolder}/build/bit-torrent-client --torrent ./build/debian-13.2.0-amd64-netinst.iso.torrent -v",
             "group": "test",
             "dependsOn": [
                 "Build: bit-torrent-client"
