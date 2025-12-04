@@ -1,0 +1,12 @@
+{
+  "name": "bit-torrent-client",
+  "version": "0.1.0",
+  "dependencies": [
+    "boost-url",
+    "boost-asio",
+    "cpr",
+    "spdlog",
+    "argparse",
+    "doctest"
+  ]
+}

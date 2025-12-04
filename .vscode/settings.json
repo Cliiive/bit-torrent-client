@@ -3,7 +3,7 @@
     "C_Cpp.formatting": "disabled",
     "clangd.path": "clangd",
     "clangd.arguments": [
-        "--compile-commands-dir=${workspaceFolder}/build",
+        "--compile-commands-dir=${workspaceFolder}/build/debug",
         "--background-index"
     ],
     "clangd.fallbackFlags": [

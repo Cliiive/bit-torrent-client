@@ -1,5 +1,5 @@
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
-#include <doctest.h>
+#include <doctest/doctest.h>
 
 #include "core/torrent_metadata_loader.hpp"
 #include "core/tracker_communicator.hpp"
