@@ -38,6 +38,7 @@ static void init_logging(bool verbose) {
     }
 
     spdlog::set_pattern("[%H:%M:%S %z] [%n] [%^%l%$] [thread %t] %v");
+    spdlog::info("Logging initialized. Verbose mode: {}", verbose ? "ON" : "OFF");
 }
 
 using namespace bt;
